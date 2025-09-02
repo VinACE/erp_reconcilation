@@ -3,10 +3,8 @@ from mcp.server.fastmcp import FastMCP
 import pandas as pd
 from typing import List, Dict
 
-# Create the MCP server
 mcp = FastMCP(name="ERP Reconciliation MCP")
 
-# Load files (adjust paths as needed)
 ERP_FILE = "erp_data.xlsx"
 BANK_FILE = "bank_statement.csv"  # converted from PDF
 
@@ -18,17 +16,17 @@ def load_bank_data() -> List[Dict]:
     df = pd.read_csv(BANK_FILE)
     return df.to_dict(orient="records")
 
-# Define tools/resources using MCP SDK decorators
-@mcp.resource("erp://transactions")
+@mcp.resource("resource://erp/transactions")
 def get_erp_transactions() -> List[Dict]:
     """Retrieve ERP transactions as structured data."""
     return load_erp_data()
 
-@mcp.resource("bank://transactions")
+@mcp.resource("resource://bank/transactions")
 def get_bank_transactions() -> List[Dict]:
     """Retrieve Bank transactions as structured data."""
     return load_bank_data()
 
+# 🔹 Your updated reconciliation function
 @mcp.tool()
 def reconcile_transactions() -> List[Dict]:
     """Match ERP and Bank data and flag discrepancies."""
@@ -37,23 +35,36 @@ def reconcile_transactions() -> List[Dict]:
     erp_df = pd.DataFrame(erp)
     bank_df = pd.DataFrame(bank)
 
+    # Normalize column names
+    erp_df = erp_df.rename(columns={"Amount": "Amount"})
+    bank_df = bank_df.rename(columns={"Debit/Credit": "Amount"})
+
+    # Extract invoice ID from description
+    bank_df["Invoice ID"] = bank_df["Description"].str.extract(r"(INV-\d+)")
+
+    # Merge
     merged = pd.merge(
         erp_df,
         bank_df,
         how="outer",
-        left_on="Invoice ID",
-        right_on="Description",
+        on="Invoice ID",
         suffixes=("_erp", "_bank"),
         indicator=True
     )
 
+    import math
+    def amounts_match(a, b, tol=0.01):
+        if pd.isna(a) or pd.isna(b):
+            return False
+        return math.isclose(float(a), float(b), rel_tol=tol, abs_tol=tol)
+
     merged["Status_flag"] = merged.apply(lambda row: (
         "Missing in ERP" if row["_merge"] == "right_only" else
         "Missing in Bank" if row["_merge"] == "left_only" else
-        ("Amount mismatch" if row["Amount_erp"] != row["Amount_bank"] else "Match")
+        ("Amount mismatch" if not amounts_match(row["Amount_erp"], row["Amount_bank"]) else "Match")
     ), axis=1)
 
-    return merged.to_dict(orient="records")
+    return merged[["Invoice ID", "Amount_erp", "Amount_bank", "Status_flag"]].to_dict(orient="records")
 
 if __name__ == "__main__":
-    mcp.run()  # launches using default transport (e.g. stdio or HTTP)
+    mcp.run_stdio()

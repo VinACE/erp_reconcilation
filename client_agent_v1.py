@@ -4,7 +4,6 @@ import json
 import logging
 from mcp_agent.mcp.gen_client import gen_client
 
-
 # -------------------------
 # Configure debug logging
 # -------------------------
@@ -50,4 +49,16 @@ async def main():
 
         # Fetch Bank transactions
         bank_data = await client.read_resource("resource://bank/transactions")
-        logger.
+        logger.debug("Bank transactions sample: %s",
+                     bank_data.content[0] if bank_data.content else "No data")
+
+        # Call reconciliation tool
+        result = await client.call_tool("reconcile_transactions", arguments={})
+        logger.info("Reconciliation result:")
+        print(json.dumps(result.content, indent=2))
+
+# -------------------------
+# Run main
+# -------------------------
+if __name__ == "__main__":
+    asyncio.run(main())

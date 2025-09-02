@@ -2,21 +2,12 @@ execution_engine: asyncio
 
 logger:
   transports: [console]
-  level: debug   # or "info"
+  level: debug
 
-servers:
-  erp:
-    command: "python"
-    args: ["erp_reconciliation_mcp.py"]
-    description: "ERP reconciliation MCP server (tools + resources)"
-    env: {}
-    readiness_timeout: 20
-
-  # optional extra servers
-  fetch:
-    command: "uvx"
-    args: ["mcp-server-fetch"]
-
-  filesystem:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+mcp:
+  servers:
+    erp:
+      command: "python"
+      args: ["erp_reconciliation_mcp.py"]
+      description: "ERP reconciliation MCP server"
+      readiness_timeout: 20

@@ -13,7 +13,7 @@ from transformers import pipeline
 # -----------------------------
 llm_pipeline = pipeline(
     task="text-generation",
-    model="path/to/your/mixtral-7b",  # replace with local path
+    model="path/to/your/mixtral-7b",  # replace with your local model path
     torch_dtype="auto",
     device_map="auto",
     max_new_tokens=512
@@ -30,14 +30,17 @@ async def main():
 
     # Connect to MCP servers
     async with gen_client(registry) as client:
+        print("Connected to MCP server.")
 
-        print("Available tools and resources:")
+        # List available tools
         tools_list = await client.list_tools()
-        resources_list = await client.list_resources()
-        print("Tools:", [t.name for t in tools_list])
-        print("Resources:", [r.uri for r in resources_list])
+        print("Available tools:", [t.name for t in tools_list])
 
-        # Wrap reconciliation tool for LangChain
+        # List available resources
+        resources_list = await client.list_resources()
+        print("Available resources:", [r.uri for r in resources_list])
+
+        # Wrap the reconciliation tool for LangChain
         async def reconcile_tool_wrapper(query: str) -> str:
             result = await client.call_tool("reconcile_transactions", arguments={})
             return json.dumps(result.content, indent=2)
@@ -48,7 +51,7 @@ async def main():
             description="Match ERP and Bank transactions and flag discrepancies."
         )
 
-        # Initialize LangChain agent with the local LLaMA/Mixtral model
+        # Initialize LangChain agent
         agent = initialize_agent(
             tools=[reconcile_tool],
             llm=llm,
@@ -56,10 +59,11 @@ async def main():
             verbose=True
         )
 
-        # Run agent on a query
-        response = await agent.arun("Please reconcile ERP and Bank transactions and summarize discrepancies.")
+        # Run the agent
+        response = await agent.arun(
+            "Please reconcile ERP and Bank transactions and summarize discrepancies."
+        )
         print("Agent output:\n", response)
-
 
 # -----------------------------
 # Entry point

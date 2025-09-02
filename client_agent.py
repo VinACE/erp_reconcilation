@@ -1,7 +1,8 @@
 import asyncio
 import json
 from mcp_agent.mcp.gen_client import gen_client
-from mcp_agent.server_registry.yaml import YamlServerRegistry
+# from mcp_agent.server_registry.yaml import YamlServerRegistry
+from mcp_agent.server_registry.yaml_registry import YamlServerRegistry
 
 async def main():
     # Load servers from YAML config

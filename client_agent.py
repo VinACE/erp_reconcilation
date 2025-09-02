@@ -1,42 +1,68 @@
 import asyncio
 import json
-import logging
 from mcp_agent.mcp.gen_client import gen_client
-from mcp_agent.mcp.server_process import ServerProcess
+from mcp_agent.server_registry.yaml import YamlServerRegistry
 
-# ---------------------------
-# Configure logging
-# ---------------------------
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+# LangChain imports
+from langchain.agents import Tool, initialize_agent
+from langchain.llms import HuggingFacePipeline
+from transformers import pipeline
+
+# -----------------------------
+# Set up local LLaMA/Mixtral LLM
+# -----------------------------
+llm_pipeline = pipeline(
+    task="text-generation",
+    model="path/to/your/mixtral-7b",  # replace with local path
+    torch_dtype="auto",
+    device_map="auto",
+    max_new_tokens=512
 )
-logger = logging.getLogger("client_agent")
 
-# ---------------------------
-# Minimal registry class
-# ---------------------------
-class SimpleRegistry:
-    """
-    Minimal registry to satisfy gen_client() in mcp-agent 0.1.13
-    """
-    def __init__(self, executable, args):
-        self.executable = executable
-        self.args = args
+llm = HuggingFacePipeline(pipeline=llm_pipeline)
 
-    async def initialize_server(self, *args, **kwargs):
-        logger.debug(f"Initializing ERP MCP server: {self.executable} {self.args}")
-        # ServerProcess wraps your executable + args to run the server
-        return ServerProcess(self.executable, self.args)
-
-
-# ---------------------------
-# Main client logic
-# ---------------------------
+# -----------------------------
+# Async main function
+# -----------------------------
 async def main():
-    # Create the minimal registry pointing to your ERP server
-    registry = SimpleRegistry("python", ["erp_reconciliation_mcp.py"])
+    # Load MCP servers from YAML config
+    registry = YamlServerRegistry("mcp_agent.config.yaml")
 
-    logger.info("Starting MCP client...")
+    # Connect to MCP servers
     async with gen_client(registry) as client:
-        logger.info("Client connected. Listing tools...")
+
+        print("Available tools and resources:")
+        tools_list = await client.list_tools()
+        resources_list = await client.list_resources()
+        print("Tools:", [t.name for t in tools_list])
+        print("Resources:", [r.uri for r in resources_list])
+
+        # Wrap reconciliation tool for LangChain
+        async def reconcile_tool_wrapper(query: str) -> str:
+            result = await client.call_tool("reconcile_transactions", arguments={})
+            return json.dumps(result.content, indent=2)
+
+        reconcile_tool = Tool(
+            name="Reconcile Transactions",
+            func=reconcile_tool_wrapper,
+            description="Match ERP and Bank transactions and flag discrepancies."
+        )
+
+        # Initialize LangChain agent with the local LLaMA/Mixtral model
+        agent = initialize_agent(
+            tools=[reconcile_tool],
+            llm=llm,
+            agent="zero-shot-react-description",
+            verbose=True
+        )
+
+        # Run agent on a query
+        response = await agent.arun("Please reconcile ERP and Bank transactions and summarize discrepancies.")
+        print("Agent output:\n", response)
+
+
+# -----------------------------
+# Entry point
+# -----------------------------
+if __name__ == "__main__":
+    asyncio.run(main())

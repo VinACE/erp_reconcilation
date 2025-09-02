@@ -1,19 +1,10 @@
 import asyncio
 import json
 from mcp_agent.mcp.gen_client import gen_client
-from mcp_agent.server_registry.default import DefaultServerRegistry
 
 async def main():
-    # Setup server registry
-    registry = DefaultServerRegistry()
-    registry.register_server(
-        "erp",                  # server name
-        "python",               # command
-        ["erp_reconciliation_mcp.py"],  # args
-    )
-
-    # Connect using gen_client
-    async with gen_client(registry) as client:
+    # Directly run the ERP server via Python
+    async with gen_client("python", ["erp_reconciliation_mcp.py"]) as client:
         # List tools
         tools = await client.list_tools()
         print("Available tools:", [t.name for t in tools])

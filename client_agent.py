@@ -1,72 +1,41 @@
 import asyncio
 import json
-from mcp_agent.mcp.gen_client import gen_client
-from mcp_agent.server_registry.yaml import YamlServerRegistry
+from mcp import gen_client
 
-# LangChain imports
-from langchain.agents import Tool, initialize_agent
-from langchain.llms import HuggingFacePipeline
-from transformers import pipeline
-
-# -----------------------------
-# Set up local LLaMA/Mixtral LLM
-# -----------------------------
-llm_pipeline = pipeline(
-    task="text-generation",
-    model="path/to/your/mixtral-7b",  # replace with your local model path
-    torch_dtype="auto",
-    device_map="auto",
-    max_new_tokens=512
-)
-
-llm = HuggingFacePipeline(pipeline=llm_pipeline)
-
-# -----------------------------
-# Async main function
-# -----------------------------
 async def main():
-    # Load MCP servers from YAML config
-    registry = YamlServerRegistry("mcp_agent.config.yaml")
+    # MCP server definition
+    erp_server = {
+        "name": "erp",
+        "command": "python",
+        "args": ["erp_reconciliation_mcp.py"],
+        "description": "ERP reconciliation MCP server",
+        "readiness_timeout": 20,
+    }
 
-    # Connect to MCP servers
-    async with gen_client(registry) as client:
-        print("Connected to MCP server.")
+    # Launch MCP client
+    async with gen_client([erp_server]) as client:
+        print("Connected to ERP MCP server.")
 
-        # List available tools
-        tools_list = await client.list_tools()
-        print("Available tools:", [t.name for t in tools_list])
+        # List tools
+        tools = await client.list_tools()
+        print("Available tools:", [t.name for t in tools])
 
-        # List available resources
-        resources_list = await client.list_resources()
-        print("Available resources:", [r.uri for r in resources_list])
+        # List resources
+        resources = await client.list_resources()
+        print("Available resources:", [r.uri for r in resources])
 
-        # Wrap the reconciliation tool for LangChain
-        async def reconcile_tool_wrapper(query: str) -> str:
-            result = await client.call_tool("reconcile_transactions", arguments={})
-            return json.dumps(result.content, indent=2)
+        # Fetch ERP transactions
+        erp_data = await client.read_resource("resource://erp/transactions")
+        print("Sample ERP transaction:", erp_data.content[0] if erp_data.content else "No data")
 
-        reconcile_tool = Tool(
-            name="Reconcile Transactions",
-            func=reconcile_tool_wrapper,
-            description="Match ERP and Bank transactions and flag discrepancies."
-        )
+        # Fetch Bank transactions
+        bank_data = await client.read_resource("resource://bank/transactions")
+        print("Sample Bank transaction:", bank_data.content[0] if bank_data.content else "No data")
 
-        # Initialize LangChain agent
-        agent = initialize_agent(
-            tools=[reconcile_tool],
-            llm=llm,
-            agent="zero-shot-react-description",
-            verbose=True
-        )
+        # Run reconciliation tool
+        result = await client.call_tool("reconcile_transactions", arguments={})
+        print("Reconciliation result:")
+        print(json.dumps(result.content, indent=2))
 
-        # Run the agent
-        response = await agent.arun(
-            "Please reconcile ERP and Bank transactions and summarize discrepancies."
-        )
-        print("Agent output:\n", response)
-
-# -----------------------------
-# Entry point
-# -----------------------------
 if __name__ == "__main__":
     asyncio.run(main())

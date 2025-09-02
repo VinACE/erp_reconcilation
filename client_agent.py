@@ -1,65 +1,42 @@
 import asyncio
 import json
 import logging
-import subprocess
-import sys
-from mcp_agent.mcp.gen_client import gen_client_stdio
+from mcp_agent.mcp.gen_client import gen_client
+from mcp_agent.mcp.server_process import ServerProcess
 
+# ---------------------------
 # Configure logging
+# ---------------------------
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("client_agent")
 
-ERP_SERVER_CMD = [sys.executable, "erp_reconciliation_mcp.py"]
+# ---------------------------
+# Minimal registry class
+# ---------------------------
+class SimpleRegistry:
+    """
+    Minimal registry to satisfy gen_client() in mcp-agent 0.1.13
+    """
+    def __init__(self, executable, args):
+        self.executable = executable
+        self.args = args
 
+    async def initialize_server(self, *args, **kwargs):
+        logger.debug(f"Initializing ERP MCP server: {self.executable} {self.args}")
+        # ServerProcess wraps your executable + args to run the server
+        return ServerProcess(self.executable, self.args)
+
+
+# ---------------------------
+# Main client logic
+# ---------------------------
 async def main():
-    # Launch the ERP MCP server manually
-    logger.info("Starting ERP MCP server...")
-    server_proc = subprocess.Popen(
-        ERP_SERVER_CMD,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
+    # Create the minimal registry pointing to your ERP server
+    registry = SimpleRegistry("python", ["erp_reconciliation_mcp.py"])
 
-    try:
-        # Wait a moment to let the server start
-        await asyncio.sleep(2)
-
-        # Connect client via stdio
-        logger.info("Connecting client via gen_client_stdio...")
-        async with gen_client_stdio(stdin=server_proc.stdin, stdout=server_proc.stdout) as client:
-            # List tools
-            tools = await client.list_tools()
-            print("Available tools:", [t.name for t in tools])
-
-            # Call reconciliation tool
-            result = await client.call_tool("reconcile_transactions", arguments={})
-            print("Reconciliation result:")
-            print(json.dumps(result.content, indent=2))
-
-            # List resources
-            resources = await client.list_resources()
-            print("Available resources:", [r.uri for r in resources])
-
-            # Fetch ERP transactions
-            erp_data = await client.read_resource("resource://erp/transactions")
-            print("Sample ERP transaction:", erp_data.content[0] if erp_data.content else "No data")
-
-            # Fetch Bank transactions
-            bank_data = await client.read_resource("resource://bank/transactions")
-            print("Sample Bank transaction:", bank_data.content[0] if bank_data.content else "No data")
-
-    finally:
-        # Stop the server
-        logger.info("Terminating ERP MCP server...")
-        server_proc.terminate()
-        await asyncio.sleep(1)  # let it exit cleanly
-        server_proc.kill()
-        logger.info("ERP MCP server stopped.")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    logger.info("Starting MCP client...")
+    async with gen_client(registry) as client:
+        logger.info("Client connected. Listing tools...")

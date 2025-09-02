@@ -1,5 +1,24 @@
+# mcp_agent.config.yaml
+execution_engine: asyncio
+
+logger:
+  transports: [console]
+  level: info   # set to "debug" if you want more verbose logs
+
 mcp:
   servers:
-    reconciliation:
-      command: "python3"
+    erp:
+      command: "python"
       args: ["erp_reconciliation_mcp.py"]
+      description: "ERP reconciliation MCP server (tools + resources)"
+      env: {}                # add DB creds or env vars if needed
+      readiness_timeout: 20  # seconds, optional but helps if startup is slow
+
+    # Example extra servers you can use while testing
+    fetch:
+      command: "uvx"
+      args: ["mcp-server-fetch"]
+
+    filesystem:
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]

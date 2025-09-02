@@ -1,41 +1,39 @@
 import asyncio
 import json
-
-from mcp_agent.mcp.client import Client
-from mcp_agent.mcp.transport import StdioServerTransport
-
+from mcp_agent.mcp.gen_client import gen_client
+from mcp_agent.server_registry.in_memory import InMemoryServerRegistry
 
 async def main():
-    # Start your ERP reconciliation server via stdio
-    transport = StdioServerTransport("python", ["erp_reconciliation_mcp.py"])
-    client = Client(transport)
+    # Register the ERP MCP server
+    registry = InMemoryServerRegistry()
+    registry.register_server(
+        "erp",                  # server name
+        "python",               # executable
+        ["erp_reconciliation_mcp.py"],  # arguments
+    )
 
-    # Initialize connection
-    await client.start()
+    # Use gen_client with registry
+    async with gen_client(registry) as client:
+        # List tools
+        tools = await client.list_tools()
+        print("Available tools:", [t.name for t in tools])
 
-    # List tools
-    tools = await client.list_tools()
-    print("Available tools:", [t.name for t in tools])
+        # Call reconciliation tool
+        result = await client.call_tool("reconcile_transactions", arguments={})
+        print("Reconciliation result:")
+        print(json.dumps(result.content, indent=2))
 
-    # Call reconciliation tool
-    result = await client.call_tool("reconcile_transactions", arguments={})
-    print("Reconciliation result:")
-    print(json.dumps(result.content, indent=2))
+        # List resources
+        resources = await client.list_resources()
+        print("Available resources:", [r.uri for r in resources])
 
-    # List resources
-    resources = await client.list_resources()
-    print("Available resources:", [r.uri for r in resources])
+        # Fetch ERP transactions
+        erp_data = await client.read_resource("resource://erp/transactions")
+        print("Sample ERP transaction:", erp_data.content[0] if erp_data.content else "No data")
 
-    # Fetch ERP transactions
-    erp_data = await client.read_resource("resource://erp/transactions")
-    print("Sample ERP transaction:", erp_data.content[0] if erp_data.content else "No data")
-
-    # Fetch Bank transactions
-    bank_data = await client.read_resource("resource://bank/transactions")
-    print("Sample Bank transaction:", bank_data.content[0] if bank_data.content else "No data")
-
-    # Shutdown
-    await client.stop()
+        # Fetch Bank transactions
+        bank_data = await client.read_resource("resource://bank/transactions")
+        print("Sample Bank transaction:", bank_data.content[0] if bank_data.content else "No data")
 
 
 if __name__ == "__main__":

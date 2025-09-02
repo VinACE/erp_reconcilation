@@ -1,0 +1,28 @@
+# Core MCP agent
+mcp-agent>=0.3.0
+
+# Async & web support (pulled in by mcp-agent, but pinned here for stability)
+aiohttp>=3.9.0
+fastapi>=0.111.0
+websockets>=12.0
+
+# Data processing
+numpy>=1.26.0
+scikit-learn>=1.5.0
+
+# Pydantic ecosystem
+pydantic>=2.8.0
+pydantic-settings>=2.3.0
+pydantic-yaml>=0.11.0
+pyyaml>=6.0.2
+
+# Telemetry (used internally by mcp-agent)
+opentelemetry-distro>=0.48b0
+opentelemetry-exporter-otlp-proto-http>=1.25.0
+opentelemetry-instrumentation-openai>=0.48b0
+opentelemetry-instrumentation-anthropic>=0.48b0
+
+# CLI & UX helpers
+typer>=0.12.3
+rich>=13.7.1
+prompt-toolkit>=3.0.43

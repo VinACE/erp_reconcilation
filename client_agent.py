@@ -1,10 +1,14 @@
 import asyncio
 import json
 from mcp_agent.mcp.gen_client import gen_client
+from mcp_agent.server_registry.yaml import YamlServerRegistry
 
 async def main():
-    # Connect to the "erp" server defined in mcp_agent.config.yaml
-    async with gen_client("erp", server_registry="mcp_agent.config.yaml") as client:
+    # Load servers from YAML config
+    registry = YamlServerRegistry("mcp_agent.config.yaml")
+
+    # Connect to the "erp" server defined in YAML
+    async with gen_client("erp", registry) as client:
         # List available tools
         tools = await client.list_tools()
         print("Available tools:", [t.name for t in tools])

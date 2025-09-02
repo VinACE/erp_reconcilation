@@ -1,5 +1,9 @@
-# Core MCP agent
-mcp-agent>=0.3.0
+# Core MCP Agent package
+mcp-agent==0.1.13
+
+# Add any other dependencies your ERP reconciliation uses, for example:
+pandas>=2.0.0
+openpyxl>=3.1.0
 
 # Async & web support (pulled in by mcp-agent, but pinned here for stability)
 aiohttp>=3.9.0

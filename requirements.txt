@@ -5,7 +5,7 @@ mcp==1.13.1
 mcp-agents>=0.0.14
 
 # LangChain for orchestration
-langchain==0.1.148
+langchain>=0.1.206  # pick a recent stable release
 
 # Local LLM support
 transformers>=4.35.0

@@ -3,7 +3,6 @@ import json
 import logging
 from mcp_agent.mcp.gen_client import gen_client
 
-
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,

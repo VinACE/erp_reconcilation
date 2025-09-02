@@ -3,7 +3,8 @@ execution_engine: asyncio
 
 logger:
   transports: [console]
-  level: info   # set to "debug" if you want more verbose logs
+  # level: info   # set to "debug" if you want more verbose logs
+  level: debug   # set to "debug" if you want more verbose logs
 
 mcp:
   servers:

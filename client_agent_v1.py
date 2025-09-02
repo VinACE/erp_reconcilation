@@ -1,14 +1,21 @@
-# client_agent_v3.py
 import asyncio
 import json
-from mcp.client.fastclient import FastClient
+from mcp_agent.mcp.gen_client import gen_client
 
 async def main():
-    # Launch ERP MCP server manually
-    server_command = ["python", "erp_reconciliation_mcp.py"]
+    # Launch ERP MCP server manually via gen_client
+    server_command = [
+        {
+            "name": "erp",
+            "command": "python",
+            "args": ["erp_reconciliation_mcp.py"],
+            "description": "ERP Reconciliation MCP Server",
+            "readiness_timeout": 20,
+        }
+    ]
 
-    # Create MCP client
-    async with FastClient(servers=server_command) as client:
+    # Connect to MCP server
+    async with gen_client(server_command) as client:
         print("Connected to ERP MCP server.")
 
         # List tools
@@ -31,6 +38,7 @@ async def main():
         result = await client.call_tool("reconcile_transactions", arguments={})
         print("Reconciliation result:")
         print(json.dumps(result.content, indent=2))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

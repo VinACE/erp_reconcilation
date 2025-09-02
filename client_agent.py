@@ -1,25 +1,29 @@
 import asyncio
 import json
-import logging
 from mcp_agent.mcp.gen_client import gen_client
-
-# Enable debug logs (optional, comment out if too noisy)
-logging.basicConfig(level=logging.INFO)
-
+from mcp_agent.server_registry.default import DefaultServerRegistry
 
 async def main():
-    # Launch your ERP MCP server subprocess directly
-    async with gen_client("python", ["erp_reconciliation_mcp.py"]) as client:
-        # List available tools
+    # Setup server registry
+    registry = DefaultServerRegistry()
+    registry.register_server(
+        "erp",                  # server name
+        "python",               # command
+        ["erp_reconciliation_mcp.py"],  # args
+    )
+
+    # Connect using gen_client
+    async with gen_client(registry) as client:
+        # List tools
         tools = await client.list_tools()
         print("Available tools:", [t.name for t in tools])
 
-        # Run reconciliation tool
+        # Call reconciliation tool
         result = await client.call_tool("reconcile_transactions", arguments={})
         print("Reconciliation result:")
         print(json.dumps(result.content, indent=2))
 
-        # Discover resources
+        # List resources
         resources = await client.list_resources()
         print("Available resources:", [r.uri for r in resources])
 

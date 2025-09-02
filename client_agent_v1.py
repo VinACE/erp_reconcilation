@@ -1,11 +1,12 @@
-# client_agent_debug.py
+# client_agent_v2.py
 import asyncio
 import json
 import logging
 from mcp_agent.mcp.gen_client import gen_client
+from mcp_agent.server_registry.in_memory import InMemoryServerRegistry
 
 # -------------------------
-# Configure debug logging
+# Configure logging
 # -------------------------
 logging.basicConfig(
     level=logging.DEBUG,
@@ -19,19 +20,18 @@ logger = logging.getLogger("client_agent")
 async def main():
     logger.info("Starting ERP MCP client...")
 
-    # Define server command for ERP MCP server
-    server_command = [
-        {
-            "name": "erp",
-            "command": "python",
-            "args": ["erp_reconciliation_mcp.py"],
-            "description": "ERP Reconciliation MCP Server",
-            "readiness_timeout": 20,  # seconds
-        }
-    ]
+    # Create a server registry and register the ERP MCP server
+    registry = InMemoryServerRegistry()
+    registry.register_server(
+        name="erp",
+        command="python",
+        args=["erp_reconciliation_mcp.py"],
+        description="ERP Reconciliation MCP Server",
+        readiness_timeout=20
+    )
 
-    # Connect to the MCP server
-    async with gen_client(server_command) as client:
+    # Connect to the MCP server using the registry
+    async with gen_client("erp", server_registry=registry) as client:
         logger.info("Connected to ERP MCP server.")
 
         # List available tools
@@ -44,12 +44,12 @@ async def main():
 
         # Fetch ERP transactions
         erp_data = await client.read_resource("resource://erp/transactions")
-        logger.debug("ERP transactions sample: %s",
+        logger.debug("ERP transaction sample: %s",
                      erp_data.content[0] if erp_data.content else "No data")
 
         # Fetch Bank transactions
         bank_data = await client.read_resource("resource://bank/transactions")
-        logger.debug("Bank transactions sample: %s",
+        logger.debug("Bank transaction sample: %s",
                      bank_data.content[0] if bank_data.content else "No data")
 
         # Call reconciliation tool

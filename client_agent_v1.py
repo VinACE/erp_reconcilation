@@ -1,13 +1,14 @@
+# client_agent_v3.py
 import asyncio
 import json
-from mcp.client import MCPClient  # correct import for MCP 1.13.1
+from mcp.client.fastclient import FastClient
 
 async def main():
     # Launch ERP MCP server manually
     server_command = ["python", "erp_reconciliation_mcp.py"]
 
-    # Create MCP client instance
-    async with MCPClient(servers=server_command) as client:
+    # Create MCP client
+    async with FastClient(servers=server_command) as client:
         print("Connected to ERP MCP server.")
 
         # List tools

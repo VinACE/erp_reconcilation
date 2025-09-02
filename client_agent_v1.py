@@ -66,4 +66,13 @@ async def main():
             bank_data.content[0] if bank_data.content else "No data"
         )
 
-        # Call reconciliation
+        # Call reconciliation tool
+        result = await client.call_tool("reconcile_transactions", arguments={})
+        logger.info("Reconciliation result:")
+        print(json.dumps(result.content, indent=2))
+
+# -----------------------------
+# Run main
+# -----------------------------
+if __name__ == "__main__":
+    asyncio.run(main())

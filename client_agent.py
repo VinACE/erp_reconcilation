@@ -1,13 +1,17 @@
 import asyncio
 import json
-from mcp_agent.mcp.gen_client import gen_client
+from mcp_agent.mcp.gen_client import gen_client_stdio
 
 async def main():
-    # Connect to your ERP MCP server (old style, no "name=" arg in 0.1.13)
-    async with gen_client(
-        "python", ["erp_reconciliation_mcp.py"]
-    ) as client:
+    # Launch ERP MCP server manually
+    process = await asyncio.create_subprocess_exec(
+        "python", "erp_reconciliation_mcp.py",
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+    )
 
+    # Connect via stdio
+    async with gen_client_stdio(process) as client:
         # List tools
         tools = await client.list_tools()
         print("Available tools:", [t.name for t in tools])
